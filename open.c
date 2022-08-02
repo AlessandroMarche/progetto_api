@@ -1,5 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define SIZE 89
+#define S_LEN 10
+
+int word_length;
 
 enum Actions
 {
@@ -12,12 +18,6 @@ struct char_occurrence
 {
     char character;
     int position;
-};
-
-struct node
-{
-    struct node *next;
-    char word[350];
 };
 
 struct c_o_node
@@ -45,56 +45,74 @@ typedef struct user_knowledge
     int exact_times[64];
 } user_knowledge;
 
-typedef struct node *list;
+typedef struct table_item
+{
+    char str[S_LEN];
+    unsigned char valid; // 0: invalid, 1: valid
+} table_item;
 
-int strLength(char *str);
-void stringCopy(char *original, char *dest);
-int fillDictionary(list *dictionary, int length);
-void stampaLista(list l);
-list insertNewWordToList(list l, char *word);
-int stringEqual(char *s1, char *s2);
-int listContain(list l, char *word);
-int stringContains(char *string, char character);
-void printHint(char *secret, char *inserted, int word_length, user_knowledge *knowledge);
+struct list_item
+{
+    struct list_item *next;
+    char word[S_LEN];
+};
+
+typedef struct list_item *list;
+
+table_item *table[SIZE];
+
 int indexOfCharacter(char character);
-void newGame(list *dict, int word_length);
+unsigned long hash(char str[S_LEN]);
+void sortAndPrintList(char items[][S_LEN], int count);
+void quickSortMain(char items[][S_LEN], int count);
+void quickSort(char items[][S_LEN], int left, int right);
+int countValidItems();
+void filterTable(user_knowledge *knowledge);
+int evaluateKnowledgeOnWord(char *word, user_knowledge knowledge);
+int checkIfExixsts(char *string);
+void setAllStringAllValid();
+int fillDictionary(int length);
+void newGame(int word_length);
 enum Actions checkNextAction();
 user_knowledge *getEmptyKnowledge();
-int occurrenceListContains(occurrrences_list list, struct char_occurrence occurrence);
 void addRigthOccurrenceToKnowledge(user_knowledge *knowledge, char character, int position);
 void addWrongOccurrenceToKnowledge(user_knowledge *knowledge, char character, int position);
-int countOccurrenceInString(char *string, char character);
+void printHint(char *secret, char *inserted, int word_length, user_knowledge *knowledge);
+void clearKnowledge(user_knowledge *knowledge);
+int stringContains(char *string, char character);
 int min(int a, int b);
 int max(int a, int b);
-list copyList(list a, int word_length);
-int evaluateKnowledgeOnWord(char *word, user_knowledge knowledge);
-void removeWordFromList(list *l, char *word);
-int getLengthOfList(list l);
-list filterDictionary(list dict, user_knowledge knowledge);
-char characterOfIndex(int index);
-int compareStrings(char *s1, char *s2);
-void insertNewWords(list *main_dictionary, list *filtered_dic, user_knowledge *knowledge, int word_lenght);
-void clearList(list l);
-void clearKnowledge(user_knowledge *knowledge);
+int occurrenceListContains(occurrrences_list list, struct char_occurrence occurrence);
 void clearOccList(occurrrences_list list);
-list firstFilterDictionary(list *dict, user_knowledge knowledge);
-void stampaKnowledge(user_knowledge k);
+int countOccurrenceInString(char *string, char character);
+void stampaTabella();
+
+unsigned long hash(char str[S_LEN])
+{
+    unsigned long hash = 5381;
+    int c;
+    for (int i = 0; i < S_LEN && str[i] != '\n'; i++)
+    {
+        c = str[i];
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+
+    return hash % SIZE;
+}
 
 int main()
 {
-    list l = NULL;
-
     /// Used to detect a new game string
     int continueGame = 0;
 
-    int word_length = 0;
     int l1 = scanf("%d", &word_length);
     l1 = l1 + 1;
 
-    int start_game = fillDictionary(&l, word_length);
+    int start_game = fillDictionary(word_length);
+    exit(0);
 
     if (start_game)
-        newGame(&l, word_length);
+        newGame(word_length);
 
     continueGame = checkNextAction();
 
@@ -102,11 +120,11 @@ int main()
     {
         if (continueGame == NEW_GAME)
         {
-            newGame(&l, word_length);
+            newGame(word_length);
         }
         else if (continueGame == READ_WORDS)
         {
-            insertNewWords(&l, NULL, NULL, word_length);
+            fillDictionary(word_length);
         }
 
         continueGame = checkNextAction();
@@ -124,18 +142,17 @@ enum Actions checkNextAction()
     if (size == EOF)
         return QUIT;
 
-    if (stringEqual(input, "+nuova_partita") == 1)
+    if (strcmp(input, "+nuova_partita") == 0)
         return NEW_GAME;
-    if (stringEqual(input, "+inserisci_inizio") == 1)
+    if (strcmp(input, "+inserisci_inizio") == 0)
         return READ_WORDS;
 
     return QUIT;
 }
 
-void newGame(list *dict, int word_length)
+void newGame(int word_length)
 {
     user_knowledge *knownledge = getEmptyKnowledge();
-    list filtered_dict = NULL;
     int attempts = 0;
     char secret[word_length + 1];
 
@@ -157,36 +174,33 @@ void newGame(list *dict, int word_length)
 
         l3 += l3 % 2 == 0 ? 1 : -1;
 
-        if (stringEqual(inserted, "+stampa_filtrate"))
+        if (strcmp(inserted, "+stampa_filtrate") == 0)
         {
-            if (filtered_dict == NULL)
+            list filtered = NULL;
+            for (int i = 0; i < SIZE; i++)
             {
-                stampaLista(*dict);
-            }
-            else
-            {
-                stampaLista(filtered_dict);
+                char tmp[SIZE][S_LEN];
+                int count = 0;
+
+                if (table[i]->valid == '1')
+                {
+                    stpcpy(tmp[count], table[i]->str);
+                    count++;
+                }
             }
         }
-        else if (stringEqual(inserted, "+inserisci_inizio"))
+        else if (strcmp(inserted, "+inserisci_inizio") == 0)
         {
-            if (filtered_dict == NULL)
-            {
-                insertNewWords(dict, NULL, knownledge, word_length);
-            }
-            else
-            {
-                insertNewWords(dict, &filtered_dict, knownledge, word_length);
-            }
+            fillDictionary(word_length);
         }
 
-        else if (stringEqual(secret, inserted) == 1)
+        else if (strcmp(secret, inserted) == 0)
         {
             /// User win
             continue_game = 0;
             printf("ok\n");
         }
-        else if (listContain(*dict, inserted) == 0)
+        else if (checkIfExixsts(inserted) == 0)
         {
             printf("not_exists\n");
         }
@@ -195,32 +209,24 @@ void newGame(list *dict, int word_length)
             attempts--;
 
             printHint(secret, inserted, word_length, knownledge);
-            if (filtered_dict == NULL)
-            {
-                filtered_dict = firstFilterDictionary(dict, *knownledge);
-            }
-            else
-            {
-                filtered_dict = firstFilterDictionary(&filtered_dict, *knownledge);
-            }
+            filterTable(knownledge);
 
-            // stampaKnowledge(*knownledge);
-
-            printf("%d\n", getLengthOfList(filtered_dict));
+            printf("%d\n", countValidItems());
         }
 
         if (attempts == 0)
         {
             printf("ko\n");
             continue_game = 0;
-            clearList(filtered_dict);
             clearKnowledge(knownledge);
+            setAllStringAllValid();
             return;
         }
     }
 
-    clearList(filtered_dict);
     clearKnowledge(knownledge);
+    setAllStringAllValid();
+
     return;
 }
 
@@ -297,149 +303,8 @@ void printHint(char *secret, char *inserted, int word_length, user_knowledge *kn
     printf("%s\n", result);
 }
 
-/// To waste less time, instead of copy the original list
-/// into a filterer_list the first time (ie: filtered_list is NULL)
-/// we use the original list to first filter and save
-/// items inside filtered list. Which will be used the next times
-list firstFilterDictionary(list *dict, user_knowledge knowledge)
-{
-    struct node *n = *dict;
-
-    list res = NULL;
-
-    while (n != NULL)
-    {
-        if (evaluateKnowledgeOnWord(n->word, knowledge) == 1)
-        {
-            res = insertNewWordToList(res, n->word);
-            n = n->next;
-        }
-        else
-            n = n->next;
-    }
-
-    return res;
-}
-
-list filterDictionary(list dict, user_knowledge knowledge)
-{
-    if (dict == NULL)
-        return NULL;
-
-    list head = dict;
-
-    struct node *in = NULL;
-    struct node *n = dict;
-
-    while (n != NULL)
-    {
-        if (evaluateKnowledgeOnWord(n->word, knowledge) == 0)
-        {
-            if (in != NULL)
-            {
-                in->next = n->next;
-            }
-            else
-            {
-                if (n->next == NULL)
-                {
-                    return NULL;
-                }
-                head = n->next;
-            }
-
-            n = n->next;
-        }
-        else
-        {
-            in = n;
-            n = n->next;
-        }
-    }
-
-    return head;
-}
-
-/// Called when stdin reads '+inserici_inizio
-/// If filtered_dic and knowledge are not null, the new workd
-/// are filtered "in-real-time" and inserted in both lists
-void insertNewWords(list *main_dictionary, list *filtered_dic, user_knowledge *knowledge, int word_lenght)
-{
-    char inserted[50];
-    int size;
-
-    while ((size = scanf("%s", inserted)) != EOF)
-    {
-        if (stringEqual(inserted, "+inserisci_fine"))
-            break;
-
-        /// Otherwise we are adding a word so:
-        *main_dictionary = insertNewWordToList(*main_dictionary, inserted);
-        if (filtered_dic != NULL && knowledge != NULL && evaluateKnowledgeOnWord(inserted, *knowledge) == 1)
-            *filtered_dic = insertNewWordToList(*filtered_dic, inserted);
-    }
-}
-
-/// Check all the user_knowledge conditions on the provided string
-/// Return 1 if string is ok, 0 otherwise
-int evaluateKnowledgeOnWord(char *word, user_knowledge knowledge)
-{
-    for (int i = 0; i < 64; i++)
-    {
-        /// String contains the i-th character
-        if (knowledge.excluded_characters[i] == 1 && stringContains(word, characterOfIndex(i)) == 1)
-        {
-            return 0;
-        }
-
-        /// String has different count of i-th character
-        if (knowledge.exact_times[i] != -1 && countOccurrenceInString(word, characterOfIndex(i)) != knowledge.exact_times[i])
-        {
-            return 0;
-        }
-
-        /// String has less i-th character than min
-        if (knowledge.min_times[i] != -1 && countOccurrenceInString(word, characterOfIndex(i)) < knowledge.min_times[i])
-        {
-            return 0;
-        }
-    }
-
-    struct c_o_node *r_n = knowledge.rigth_spots;
-    while (r_n != NULL)
-    {
-        if (word[r_n->occurrence.position] != r_n->occurrence.character)
-        {
-            return 0;
-        }
-        r_n = r_n->next;
-    }
-
-    struct c_o_node *w_n = knowledge.wrong_spots;
-    while (w_n != NULL)
-    {
-        if (word[w_n->occurrence.position] == w_n->occurrence.character)
-        {
-            return 0;
-        }
-        w_n = w_n->next;
-    }
-
-    return 1;
-}
-
-void stampaLista(list l)
-{
-    struct node *x = l;
-    while (x != NULL)
-    {
-        printf("%s\n", x->word);
-        x = x->next;
-    }
-}
-
 /// Return 1 if a new game should start, 0 otherwise
-int fillDictionary(list *dictionary, int length)
+int fillDictionary(int length)
 {
     int continue_reading = 1;
     while (continue_reading == 1)
@@ -454,131 +319,47 @@ int fillDictionary(list *dictionary, int length)
         }
         else if (string[0] == '+')
         {
-            char c[] = "+nuova_partita";
-            if (stringEqual(string, c) == 1)
+    stampaTabella();
+
+            if (strcmp(string, "+nuova_partita") == 0)
                 return 1;
+            if (strcmp(string, "+inserisci_fine") == 0)
+                return 0;
         }
-        else if (strLength(string) != length)
+        else if (strlen(string) != length)
         {
             printf("Errore nella lettura dell'input: La stringa fornita non rispetta il vincolo riguardo la lunghezza");
         }
         else
         {
             string[length] = '\0';
-            *dictionary = insertNewWordToList(*dictionary, string);
+
+            table_item *item = malloc(sizeof(table_item));
+            strcpy(item->str, string);
+            item->valid = '1';
+
+            int index = hash(string);
+
+            while (table[index] != NULL)
+            {
+
+                index = (index + 1) % SIZE;
+            }
+
+            table[index] = item;
         }
     }
 
     return 0;
 }
 
-/// Insert the given word in a lexilogical order
-list insertNewWordToList(list l, char *word)
+// TODO: rimuovi questo
+void stampaTabella()
 {
-    struct node *n = malloc(sizeof(struct node));
-    n->next = NULL;
-    stringCopy(word, n->word);
-
-    if (l == NULL)
-        return n;
-
-    struct node *inseguitore = NULL;
-    struct node *x = l;
-
-    while (x != NULL && (compareStrings(word, x->word) > 0))
+    for (int i = 0; i < SIZE; i++)
     {
-        inseguitore = x;
-        x = x->next;
+        printf("%d: %s\n", i, table[i]->str);
     }
-
-    if (inseguitore != NULL)
-    {
-        inseguitore->next = n;
-        n->next = x;
-        return l;
-    }
-
-    n->next = l;
-    return n;
-}
-
-/// Compare two strings, if s1 ==  s2 retun 0;
-/// if s1 > s2 return 1, -1 otherwise
-int compareStrings(char *s1, char *s2)
-{
-    while (*s1)
-    {
-        if (*s1 != *s2)
-            break;
-        s1++;
-        s2++;
-    }
-
-    return *(const unsigned char *)s1 - *(const unsigned char *)s2;
-}
-
-int strLength(char *str)
-{
-    char *s;
-    for (s = str; *s; ++s)
-        ;
-    return (s - str);
-}
-
-void stringCopy(char *original, char *dest)
-{
-    if (dest == NULL)
-        return;
-    int i = 0;
-    for (; original[i] != '\0'; i++)
-        dest[i] = original[i];
-    dest[i + 1] = '\0';
-}
-
-/// Return 1 if s1 is equal to s2, 0 otherwise
-int stringEqual(char *s1, char *s2)
-{
-    int i = 0;
-
-    for (; s1[i] != '\0'; i++)
-    {
-        if (s1[i] != s2[i])
-            return 0;
-    }
-
-    if (s2[i] == '\0')
-        return 1;
-    return 0;
-}
-
-/// Return 1 if the provided string contains at least one character
-int stringContains(char *string, char character)
-{
-    for (int i = 0; string[i] != '\0'; i++)
-        if (string[i] == character)
-            return 1;
-    return 0;
-}
-
-/// Check if the provided list l contains the second
-/// arument: word
-///
-/// If there is a match (ie: list contains word)
-/// return 1, return 0 otherwise
-int listContain(list l, char *word)
-{
-    if (stringEqual(l->word, word) == 1)
-        return 1;
-
-    struct node *n = l->next;
-    while (n != NULL)
-    {
-        if (stringEqual(n->word, word) == 1)
-            return 1;
-        n = n->next;
-    }
-
-    return 0;
 }
 
 /// In base of ASCII order: "-" < 0-9 < A-Z < "_" < a-z
@@ -704,18 +485,6 @@ int occurrenceListContains(occurrrences_list list, struct char_occurrence occurr
     return 0;
 }
 
-/// Return the count of the times the character occurres in string
-int countOccurrenceInString(char *string, char character)
-{
-    int counter = 0;
-    for (int i = 0; string[i] != '\0'; i++)
-    {
-        if (string[i] == character)
-            counter++;
-    }
-    return counter;
-}
-
 /// Return the smallest between a and b
 int min(int a, int b)
 {
@@ -730,71 +499,6 @@ int max(int a, int b)
     if (a < b)
         return b;
     return a;
-}
-
-list copyList(list a, int word_length)
-{
-    if (a == NULL)
-        return NULL;
-
-    struct node *new_list = NULL;
-
-    struct node *n = a;
-    while (n != NULL)
-    {
-        new_list = insertNewWordToList(new_list, n->word);
-        n = n->next;
-    }
-
-    return new_list;
-}
-
-void removeWordFromList(list *l, char *word)
-{
-    if (l == NULL)
-        return;
-
-    struct node *in = NULL;
-    struct node *n = *l;
-
-    while (n != NULL)
-    {
-        if (stringEqual(n->word, word) == 1)
-        {
-            if (in != NULL)
-                in->next = n->next;
-            free(n);
-            return;
-        }
-
-        in = n;
-        n = n->next;
-    }
-}
-
-int getLengthOfList(list l)
-{
-    int counter = 0;
-
-    struct node *n = l;
-    while (n != NULL)
-    {
-        counter++;
-        n = n->next;
-    }
-
-    return counter;
-}
-
-void clearList(list l)
-{
-    struct node *n = l;
-    while (n != NULL)
-    {
-        struct node *tmp = n;
-        n = n->next;
-        free(tmp);
-    }
 }
 
 void clearKnowledge(user_knowledge *knowledge)
@@ -820,7 +524,7 @@ void stampaKnowledge(user_knowledge k)
     printf("\nKnowledge:\n");
     for (int i = 0; i < 64; i++)
     {
-        char c = characterOfIndex(i); 
+        char c = characterOfIndex(i);
         printf("Char %c: %d - %d - %d\n", c, k.exact_times[i], k.min_times[i], k.excluded_characters[i]);
     }
 
@@ -839,4 +543,177 @@ void stampaKnowledge(user_knowledge k)
         printf("%c: %d\n", n2->occurrence.character, n2->occurrence.position);
         n2 = n2->next;
     }
+}
+
+void sortAndPrintList(char items[][S_LEN], int count)
+{
+    quickSortMain(items, count);
+    for (int i = 0; i < count; i++)
+        printf("%s", items[i]);
+}
+
+void quickSortMain(char items[][S_LEN], int count)
+{
+    quickSort(items, 0, count - 1);
+}
+
+void quickSort(char items[][S_LEN], int left, int right)
+{
+    int i, j;
+    char *x;
+    char temp[S_LEN];
+
+    i = left;
+    j = right;
+    x = items[(left + right) / 2];
+
+    do
+    {
+        while ((strcmp(items[i], x) < 0) && (i < right))
+        {
+            i++;
+        }
+        while ((strcmp(items[j], x) > 0) && (j > left))
+        {
+            j--;
+        }
+        if (i <= j)
+        {
+            strcpy(temp, items[i]);
+            strcpy(items[i], items[j]);
+            strcpy(items[j], temp);
+            i++;
+            j--;
+        }
+    } while (i <= j);
+
+    if (left < j)
+    {
+        quickSort(items, left, j);
+    }
+    if (i < right)
+    {
+        quickSort(items, i, right);
+    }
+}
+
+int countValidItems()
+{
+    int counter = 0;
+
+    for (int i = 0; i < SIZE; i++)
+    {
+        if (table[i] == NULL)
+            continue;
+
+        if (table[i]->valid == '1')
+            counter++;
+    }
+
+    return counter;
+}
+
+void filterTable(user_knowledge *knowledge)
+{
+    for (int i = 0; i < SIZE; i++)
+    {
+        if (table[i] == NULL)
+            continue;
+        if (table[i]->valid == '0')
+            continue;
+
+        if (evaluateKnowledgeOnWord(table[i]->str, *knowledge) == 0)
+            table[i]->valid = 0;
+    }
+}
+
+int evaluateKnowledgeOnWord(char *word, user_knowledge knowledge)
+{
+    for (int i = 0; i < 64; i++)
+    {
+        /// String contains the i-th character
+        if (knowledge.excluded_characters[i] == 1 && stringContains(word, characterOfIndex(i)) == 1)
+        {
+            return 0;
+        }
+
+        /// String has different count of i-th character
+        if (knowledge.exact_times[i] != -1 && countOccurrenceInString(word, characterOfIndex(i)) != knowledge.exact_times[i])
+        {
+            return 0;
+        }
+
+        /// String has less i-th character than min
+        if (knowledge.min_times[i] != -1 && countOccurrenceInString(word, characterOfIndex(i)) < knowledge.min_times[i])
+        {
+            return 0;
+        }
+    }
+
+    struct c_o_node *r_n = knowledge.rigth_spots;
+    while (r_n != NULL)
+    {
+        if (word[r_n->occurrence.position] != r_n->occurrence.character)
+        {
+            return 0;
+        }
+        r_n = r_n->next;
+    }
+
+    struct c_o_node *w_n = knowledge.wrong_spots;
+    while (w_n != NULL)
+    {
+        if (word[w_n->occurrence.position] == w_n->occurrence.character)
+        {
+            return 0;
+        }
+        w_n = w_n->next;
+    }
+
+    return 1;
+}
+
+int checkIfExixsts(char *string)
+{
+    for (int i = 0; i < SIZE; i++)
+    {
+        if (table[i] == NULL)
+            continue;
+        if (strcmp(table[i]->str, string) == 0)
+            return 1;
+    }
+
+    return 1;
+}
+
+void setAllStringAllValid()
+{
+    //? Set all strings as valid
+    for (int i = 0; i < SIZE; i++)
+    {
+        if (table[i] == NULL)
+            continue;
+        table[i]->valid = '1';
+    }
+}
+
+/// Return 1 if the provided string contains at least one character
+int stringContains(char *string, char character)
+{
+    for (int i = 0; string[i] != '\0'; i++)
+        if (string[i] == character)
+            return 1;
+    return 0;
+}
+
+/// Return the count of the times the character occurres in string
+int countOccurrenceInString(char *string, char character)
+{
+    int counter = 0;
+    for (int i = 0; string[i] != '\0'; i++)
+    {
+        if (string[i] == character)
+            counter++;
+    }
+    return counter;
 }
