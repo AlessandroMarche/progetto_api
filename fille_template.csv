@@ -1,6 +1,6 @@
-first_name;last_name;phone_number;group_slug;email;job_titles;cv_url;type
-Alessandro;Marchetti;393200397802;nuovo_gruppo;alessandro@zwap.in;sviluppatore;https://google.com;applicant
-Luigi;Adornetto;39123456789;nuovo_gruppo;luigi@zwap.in;sviluppatore, designer;https://yahoo.com;prospect
-Vincenzo;Cantavenera;;;;;;other_not_valid_value
-Luca;Tamborino frisari;395678901234;;luca@zwap.in;;;prospect
-Federico;pedron;7895674568;altro_nuovo_gruppo;federizo@zwap.in;job title;;not_valiud_vaie
+"first_name","last_name","phone_number","group_slug","email","job_titles","cv_url","type"
+"Alessandro","Marchetti","393200397802","nuovo_gruppo","alessandro@zwap.in","sviluppatore","https://google.com","applicant"
+"Luigi","Adornetto","39123456789","nuovo_gruppo","luigi@zwap.in","sviluppatore, designer","https://yahoo.com","prospect"
+"Vincenzo","Cantavenera","","","","","","other_not_valid_value"
+"Luca","Tamborino frisari","395678901234","","luca@zwap.in","","","prospect"
+"Federico","pedron","7895674568","altro_nuovo_gruppo","federizo@zwap.in","job title","","not_valiud_vaie"
